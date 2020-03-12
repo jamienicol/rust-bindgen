@@ -612,6 +612,7 @@ impl Builder {
     ///     .unwrap();
     /// ```
     pub fn header<T: Into<String>>(mut self, header: T) -> Builder {
+        println!("{}", "bindgen Builder::header()");
         self.input_headers.push(header.into());
         self
     }
@@ -1213,6 +1214,7 @@ impl Builder {
 
     /// Generate the Rust bindings using the options built up thus far.
     pub fn generate(mut self) -> Result<Bindings, ()> {
+        println!("{}", "bindgen Builder::generate()");
         // Add any extra arguments from the environment to the clang command line.
         if let Some(extra_clang_args) =
             env::var("BINDGEN_EXTRA_CLANG_ARGS").ok()
@@ -1223,6 +1225,7 @@ impl Builder {
             } else {
                 self.options.clang_args.push(extra_clang_args);
             };
+            println!("bindgen extra clang_args: {:?}", self.options.clang_args);
         }
 
         // Transform input headers to arguments on the clang command line.
@@ -1232,6 +1235,7 @@ impl Builder {
             .extend(self.input_headers.drain(..).flat_map(|header| {
                 iter::once("-include".into()).chain(iter::once(header))
             }));
+        println!("bindgen input header: {:?}", self.options.clang_args);
 
         self.options.input_unsaved_files.extend(
             self.input_header_contents
@@ -1718,7 +1722,9 @@ impl Default for BindgenOptions {
 }
 
 fn ensure_libclang_is_loaded() {
+    println!("{}", "ensure_libclang_is_loaded()");
     if clang_sys::is_loaded() {
+        println!("{}", "already loaded. returning early");
         return;
     }
 
@@ -1736,7 +1742,9 @@ fn ensure_libclang_is_loaded() {
         };
     }
 
+    println!("{}", "calling clang_sys::set_library()");
     clang_sys::set_library(Some(LIBCLANG.clone()));
+    println!("{}", "called clang_sys::set_library()");
 }
 
 /// Generated Rust bindings.
@@ -1751,14 +1759,21 @@ impl Bindings {
     pub(crate) fn generate(
         mut options: BindgenOptions,
     ) -> Result<Bindings, ()> {
+        println!("{}", "bindgen Bindings::generate()");
         ensure_libclang_is_loaded();
+        println!("{}", "bindgen clang is loaded");
 
         debug!(
             "Generating bindings, libclang at {}",
             clang_sys::get_library().unwrap().path().display()
         );
+        println!(
+            "bindgen libclang at {}",
+            clang_sys::get_library().unwrap().path().display()
+        );
 
         options.build();
+        println!("{}", "bindgen options built");
 
         fn detect_include_paths(options: &mut BindgenOptions) {
             if !options.detect_include_paths {
@@ -1833,6 +1848,7 @@ impl Bindings {
         }
 
         detect_include_paths(&mut options);
+        println!("{}", "bindgen include paths detected");
 
         #[cfg(unix)]
         fn can_read(perms: &std::fs::Permissions) -> bool {
@@ -1869,7 +1885,7 @@ impl Bindings {
             options.clang_args.push(f.name.to_str().unwrap().to_owned())
         }
 
-        debug!("Fixed-up options: {:?}", options);
+        println!("bindgen Fixed-up options: {:?}", options);
 
         let time_phases = options.time_phases;
         let mut context = BindgenContext::new(options);
@@ -1880,6 +1896,7 @@ impl Bindings {
         }
 
         let (items, options) = codegen::codegen(context);
+        println!("{}", "bindgen codegen");
 
         Ok(Bindings {
             options: options,
